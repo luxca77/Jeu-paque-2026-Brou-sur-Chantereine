@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Téléphone Game</title>
+
+<style>
+body {
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#111;
+  font-family: Arial;
+}
+
+#phone {
+  width:320px;
+  height:640px;
+  border-radius:30px;
+  overflow:hidden;
+  background:url('https://picsum.photos/400/800') center/cover;
+  position:relative;
+  box-shadow:0 0 20px black;
+}
+
+#home {
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:15px;
+  padding:20px;
+}
+
+.app {
+  width:70px;
+  height:70px;
+  background:rgba(255,255,255,0.2);
+  border-radius:20px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:white;
+  font-size:12px;
+  text-align:center;
+  cursor:pointer;
+}
+
+.locked { opacity:0.5; }
+
+#screen {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  color:white;
+  display:none;
+  padding:15px;
+  overflow:auto;
+}
+
+#back {
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#333;
+  padding:10px 20px;
+  border-radius:20px;
+  cursor:pointer;
+}
+
+.diff-circle {
+  position:absolute;
+  border:2px solid red;
+  border-radius:50%;
+  pointer-events:none;
+}
+
+/* PUZZLE */
+.board {
+  display:grid;
+  grid-template-columns:repeat(3, 60px);
+  gap:5px;
+  justify-content:center;
+  margin-top:10px;
+}
+
+.cell {
+  width:60px;
+  height:60px;
+  border:2px dashed white;
+}
+
+.pieces {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  margin-top:20px;
+  gap:10px;
+}
+
+.piece {
+  width:60px;
+  height:60px;
+  cursor:pointer;
+}
+</style>
+
+</head>
+<body>
+
+<div id="phone">
+  <div id="home">
+    <div class="app" onclick="openApp('messages')">💬<br>Messages</div>
+    <div class="app" onclick="openApp('insta')">📸<br>Insta</div>
+    <div class="app locked" onclick="unlockApp('waze')">🗺️<br>Waze</div>
+    <div class="app locked" onclick="unlockApp('uber')">🍔<br>Uber</div>
+    <div class="app locked" onclick="unlockApp('sport')">🏃<br>Sport</div>
+    <div class="app locked" onclick="unlockApp('mystery')">❓<br>?</div>
+  </div>
+
+  <div id="screen"></div>
+  <div id="back" onclick="goHome()" style="display:none">⬅ Retour</div>
+</div>
+
+<script>
+let codes = {
+  waze: "1234",
+  uber: "5678",
+  sport: "9999",
+  mystery: "0000"
+};
+
+let selectedPiece = null;
+
+/* NAVIGATION */
+function openApp(app) {
+  document.getElementById("home").style.display = "none";
+  document.getElementById("screen").style.display = "block";
+  document.getElementById("back").style.display = "block";
+
+  const screen = document.getElementById("screen");
+  screen.innerHTML = "";
+
+  if (app === "messages") {
+  launchMessages();
+}
+
+  if (app === "insta") {
+    launchDifferences("PIRATE");
+  }
+
+  if (app === "waze") {
+    launchPuzzle();
+  }
+
+  if (app === "uber") {
+  launchMemory();
+}
+if (app === "sport") {
+  launchMaze();
+}
+if (app === "mystery") {
+  launchPendu();
+}
+}
+
+function goHome() {
+  document.getElementById("home").style.display = "grid";
+  document.getElementById("screen").style.display = "none";
+  document.getElementById("back").style.display = "none";
+}
+
+function unlockApp(app) {
+  let code = prompt("Code ?");
+  if (code === codes[app]) {
+    document.querySelectorAll('.app').forEach(a=>{
+      if(a.innerText.toLowerCase().includes(app)) a.classList.remove('locked');
+    });
+    openApp(app);
+  } else {
+    alert("Mauvais code");
+  }
+}
+
+function reply(msg) {
+  const chat = document.getElementById("chat");
+  let response = "";
+
+  if (msg === "usopp") response = "C'est bien.";
+  if (msg === "nami") response = "Continue.";
+
+  chat.innerHTML += `<p>Toi: ${msg}</p><p>Inconnu: ${response}</p>`;
+}
+
+/* =======================
+   JEU 7 DIFFERENCES
+======================= */
+
+function launchDifferences(motFinal) {
+  const screen = document.getElementById("screen");
+
+  screen.innerHTML = `
+    <h3>7 différences</h3>
+    <div style="display:flex; justify-content:center; gap:10px;">
+      <div style="position:relative;">
+        <img id="img1" src="image1.png" width="130">
+      </div>
+      <div>
+        <img src="image2.png" width="130">
+      </div>
+    </div>
+  `;
+
+  let found = 0;
+
+  const differences = [
+    {x:69, y:46},
+    {x:11, y:87},
+    {x:77, y:26},
+    {x:23, y:19},
+    {x:118, y:3},
+    {x:98, y:89},
+    {x:61, y:59}
+  ];
+
+  const tolerance = 5;
+  const img = document.getElementById("img1");
+
+  img.addEventListener("click", function(e) {
+    const rect = img.getBoundingClientRect();
+    const x = Math.round(e.clientX - rect.left);
+    const y = Math.round(e.clientY - rect.top);
+
+    console.log("Coordonnées du clic -> x:", x, "y:", y);
+
+    let isDifference = false;
+
+    differences.forEach(diff => {
+      if (Math.abs(x - diff.x) <= tolerance && Math.abs(y - diff.y) <= tolerance) {
+        isDifference = true;
+      }
+    });
+
+    if (isDifference) {
+      found++;
+
+      const circle = document.createElement("div");
+      circle.className = "diff-circle";
+      circle.style.left = (x - 12) + "px";
+      circle.style.top = (y - 12) + "px";
+      circle.style.width = "24px";
+      circle.style.height = "24px";
+
+      img.parentElement.appendChild(circle);
+
+      if (found >= 7) {
+        setTimeout(() => {
+          screen.innerHTML = `<h2>Mot secret : ${motFinal}</h2>`;
+
+            usoppDone();
+          
+        }, 2000);
+      }
+    }
+  });
+} 
+
+/* =======================
+   PUZZLE
+======================= */
+
+function launchPuzzle() {
+  const screen = document.getElementById("screen");
+
+  screen.innerHTML = `
+    <h3>Puzzle</h3>
+    <div class="board" id="board"></div>
+    <div class="pieces" id="pieces"></div>
+  `;
+
+  const board = document.getElementById("board");
+  const piecesContainer = document.getElementById("pieces");
+
+  for (let i = 1; i <= 9; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.dataset.id = i;
+    cell.onclick = () => placePiece(cell);
+    board.appendChild(cell);
+  }
+
+  let pieces = [1,2,3,4,5,6,7,8,9];
+  pieces.sort(() => Math.random() - 0.5);
+
+  pieces.forEach(id => {
+    const piece = document.createElement("div");
+    piece.className = "piece";
+    piece.dataset.id = id;
+
+    piece.innerHTML = `<img src="p${id}.png" style="width:100%; height:100%; pointer-events:none;">`;
+
+    piece.onclick = () => {
+      selectedPiece = piece;
+    };
+
+    piecesContainer.appendChild(piece);
+  });
+}
+
+function placePiece(cell) {
+  if (!selectedPiece) return;
+
+  const pieceId = selectedPiece.dataset.id;
+  const cellId = cell.dataset.id;
+
+  if (pieceId === cellId) {
+    cell.appendChild(selectedPiece);
+    selectedPiece = null;
+
+    // ✅ vérification fin
+    const allCells = document.querySelectorAll(".cell");
+    let completed = true;
+
+    allCells.forEach(c => {
+      if (c.children.length === 0) {
+        completed = false;
+      }
+    });
+
+    if (completed) {
+      setTimeout(() => {
+        document.getElementById("screen").innerHTML = "<h2>Mot secret : COFFRE</h2>";
+          namiDone();
+
+      }, 2000);
+    }
+
+  } else {
+    selectedPiece.style.opacity = "0.3";
+    setTimeout(() => {
+      selectedPiece.style.opacity = "1";
+    }, 300);
+  }
+}
+
+
+/* =======================
+   MEMORY
+======================= */
+
+function launchMemory() {
+  const screen = document.getElementById("screen");
+
+  screen.innerHTML = `
+    <h3>Memory</h3>
+    <div id="memoryBoard" style="
+      display:grid;
+      grid-template-columns:repeat(4, 60px);
+      gap:10px;
+      justify-content:center;
+      margin-top:20px;
+    "></div>
+  `;
+
+  const board = document.getElementById("memoryBoard");
+
+  // 8 paires
+  let cards = [];
+  for (let i = 1; i <= 8; i++) {
+    cards.push(i);
+    cards.push(i);
+  }
+
+  // mélange
+  cards.sort(() => Math.random() - 0.5);
+
+  let firstCard = null;
+  let secondCard = null;
+  let lock = false;
+  let foundPairs = 0;
+
+  cards.forEach(id => {
+    const card = document.createElement("div");
+    card.style.width = "60px";
+    card.style.height = "60px";
+    card.style.background = "#444";
+    card.style.display = "flex";
+    card.style.alignItems = "center";
+    card.style.justifyContent = "center";
+    card.style.cursor = "pointer";
+
+    card.dataset.id = id;
+    card.dataset.revealed = "false";
+
+    // contenu caché (image)
+    card.innerHTML = `<img src="m${id}.jpg" style="width:100%; height:100%; display:none;">`;
+
+    card.onclick = () => {
+      if (lock) return;
+      if (card.dataset.revealed === "true") return;
+
+      reveal(card);
+
+      if (!firstCard) {
+        firstCard = card;
+      } else {
+        secondCard = card;
+        lock = true;
+
+        if (firstCard.dataset.id === secondCard.dataset.id) {
+          // paire trouvée
+          firstCard = null;
+          secondCard = null;
+          lock = false;
+          foundPairs++;
+
+          // 🎉 fin du jeu
+          if (foundPairs === 8) {
+            setTimeout(() => {
+              document.getElementById("screen").innerHTML = "<h2>Mot secret : LIVRAISON</h2>";
+                sanjiDone();
+          
+            }, 2000);
+          }
+
+        } else {
+          // mauvaise paire
+          setTimeout(() => {
+            hide(firstCard);
+            hide(secondCard);
+            firstCard = null;
+            secondCard = null;
+            lock = false;
+          }, 1000);
+        }
+      }
+    };
+
+    board.appendChild(card);
+  });
+
+  function reveal(card) {
+    card.querySelector("img").style.display = "block";
+    card.dataset.revealed = "true";
+  }
+
+  function hide(card) {
+    card.querySelector("img").style.display = "none";
+    card.dataset.revealed = "false";
+  }
+}
+/* =======================
+   LABYRINTHE ZORO
+======================= */
+
+function launchMaze() {
+  const screen = document.getElementById("screen");
+
+  screen.innerHTML = `
+    <h3>Labyrinthe</h3>
+
+    <div id="maze" style="
+      display:grid;
+      grid-template-columns:repeat(9, 30px);
+      gap:2px;
+      justify-content:center;
+      margin-top:10px;
+    "></div>
+
+    <div style="text-align:center; margin-top:20px;">
+      <button onclick="move('up')">⬆️</button><br>
+      <button onclick="move('left')">⬅️</button>
+      <button onclick="move('down')">⬇️</button>
+      <button onclick="move('right')">➡️</button>
+    </div>
+  `;
+
+  const maze = document.getElementById("maze");
+
+  // 0 = chemin, 1 = mur, 2 = monstre, 3 = sortie
+
+window.map = [
+[0,0,1,0,0,0,1,2,0],
+[1,0,1,0,1,0,1,0,0],
+[0,0,0,0,1,0,0,1,0],
+[0,1,1,2,1,1,0,1,0],
+[0,0,1,0,0,0,0,1,0],
+[1,0,1,1,1,0,1,1,0],
+[0,0,0,0,1,0,0,0,0],
+[0,1,1,0,1,1,1,0,0],
+[0,1,0,0,0,0,2,0,2],
+[0,1,0,1,1,0,1,1,0],
+[0,2,0,0,1,0,0,0,0],
+[0,1,1,0,1,1,1,1,0],
+[0,0,0,2,0,0,0,0,3]
+];
+
+  window.player = {x:0, y:0};
+
+  drawMaze();
+}
+
+function drawMaze() {
+  const maze = document.getElementById("maze");
+  maze.innerHTML = "";
+
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+
+      const cell = document.createElement("div");
+      cell.style.width = "30px";
+      cell.style.height = "30px";
+
+      if (map[y][x] === 1) {
+        cell.style.background = "white"; // mur
+      } else {
+        cell.style.background = "#222"; // sol
+      }
+
+      if (map[y][x] === 2) {
+        cell.style.background = "black"; // monstre
+      }
+
+      if (map[y][x] === 3) {
+        cell.style.background = "green"; // sortie
+      }
+
+      // joueur (Zoro)
+      if (player.x === x && player.y === y) {
+        cell.style.background = "lime";
+      }
+
+      maze.appendChild(cell);
+    }
+  }
+}
+
+function move(dir) {
+  let newX = player.x;
+  let newY = player.y;
+
+  if (dir === "up") newY--;
+  if (dir === "down") newY++;
+  if (dir === "left") newX--;
+  if (dir === "right") newX++;
+
+  // limites
+  if (newY < 0 || newY >= map.length || newX < 0 || newX >= map[0].length) return;
+
+  // mur
+  if (map[newY][newX] === 1) return;
+
+  player.x = newX;
+  player.y = newY;
+
+  drawMaze();
+
+  // monstre
+  if (map[newY][newX] === 2) {
+    loseMaze();
+  }
+
+  // victoire
+  if (map[newY][newX] === 3) {
+    setTimeout(() => {
+      document.getElementById("screen").innerHTML = "<h2>Mot secret : SABRE</h2>";
+          zoroDone();
+  
+    }, 2000);
+  }
+}
+
+function loseMaze() {
+  const screen = document.getElementById("screen");
+
+  // image aléatoire
+  const img = Math.random() < 0.5 ? "l1.jpg" : "l2.jpg";
+
+  screen.innerHTML = `
+    <div style="text-align:center;">
+      <h2>PERDU</h2>
+      <img src="${img}" style="width:150px;">
+      <br><br>
+      <button onclick="launchMaze()">Recommencer</button>
+    </div>
+  `;
+}
+//pendu
+function launchPendu() {
+  const screen = document.getElementById("screen");
+
+  const words = ["PIRATE", "CAPITAINE","AVENTURE", "EQUIPAGE", "TRESOR", "NAVIRE", "PERROQUET", "SAUVETAGE", "BATEAU"];
+  const word = words[Math.floor(Math.random() * words.length)];
+
+  let errors = 0;
+  let found = Array(word.length).fill("_");
+
+  screen.innerHTML = `
+    <h3>Pendu - Sauve Luffy</h3>
+
+    <div id="word"></div>
+
+    <div id="hangman" style="margin:20px 0; font-size:20px;"></div>
+
+    <div id="letters" style="
+      display:grid;
+      grid-template-columns:repeat(7, 35px);
+      gap:5px;
+      justify-content:center;
+    "></div>
+  `;
+
+  const wordDiv = document.getElementById("word");
+  const lettersDiv = document.getElementById("letters");
+  const hangmanDiv = document.getElementById("hangman");
+
+  function renderWord() {
+    wordDiv.innerHTML = found.join(" ");
+  }
+
+  function drawHangman() {
+    const stages = [
+      "",
+      "O",
+      "O<br>|",
+      "O<br>|<br>|",
+      "O<br>/|",
+      "O<br>/|\\",
+      "O<br>/|\\<br>/",
+      "O<br>/|\\<br>/ \\ 💀"
+    ];
+    hangmanDiv.innerHTML = stages[errors];
+  }
+
+  renderWord();
+  drawHangman();
+
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  alphabet.split("").forEach(letter => {
+    const div = document.createElement("div");
+
+    div.innerText = letter;
+    div.style.width = "30px";
+    div.style.height = "30px";
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center";
+    div.style.border = "1px solid #444";
+    div.style.cursor = "pointer";
+
+    div.onclick = () => {
+      if (div.classList.contains("used")) return;
+
+      div.classList.add("used");
+      div.style.background = "#555";
+      div.style.color = "#999";
+
+      if (word.includes(letter)) {
+        for (let i = 0; i < word.length; i++) {
+          if (word[i] === letter) {
+            found[i] = letter;
+          }
+        }
+        renderWord();
+
+        if (!found.includes("_")) {
+          setTimeout(() => {
+            screen.innerHTML = "<h2>Mot secret : CAPTAIN</h2>";
+                luffyDone();
+  
+          }, 2000);
+        }
+
+      } else {
+        errors++;
+        drawHangman();
+
+        if (errors >= 7) {
+          setTimeout(() => {
+            screen.innerHTML = "<h2>PERDU 💀 Luffy est pendu</h2>";
+          }, 1000);
+        }
+      }
+    };
+
+    lettersDiv.appendChild(div);
+  });
+}
+
+/* =======================
+   MESSAGES SYSTEM CLEAN
+======================= */
+
+let progress = 0;
+// 0 = début
+// 1 = usopp sauvé
+// 2 = nami sauvée
+// 3 = sanji sauvé
+// 4 = zoro sauvé
+// 5 = fin
+
+function launchMessages() {
+  const screen = document.getElementById("screen");
+
+  screen.innerHTML = `
+    <h3>Inconnu</h3>
+    <div id="chat" style="height:300px; overflow:auto;"></div>
+    <div id="choices"></div>
+  `;
+
+  if (progress === 0) startUsopp();
+  if (progress === 1) afterUsopp();
+  if (progress === 2) afterNami();
+  if (progress === 3) afterSanji();
+  if (progress === 4) afterZoro();
+  if (progress === 5) endGame();
+}
+
+/* ===== BASE ===== */
+
+function addMessage(text, from="npc") {
+  const chat = document.getElementById("chat");
+  const p = document.createElement("p");
+  p.innerText = (from === "player" ? "Toi: " : "Inconnu: ") + text;
+  chat.appendChild(p);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showChoices(choices) {
+  const div = document.getElementById("choices");
+  div.innerHTML = "";
+
+  choices.forEach(([text, action]) => {
+    const btn = document.createElement("button");
+    btn.innerText = text;
+    btn.onclick = () => {
+      addMessage(text, "player");
+      action();
+    };
+    div.appendChild(btn);
+  });
+}
+
+/* ===== USOPP ===== */
+
+function startUsopp() {
+  addMessage(`Je suis désolé de vous déranger mais nous avons un problème.
+
+Un nouveau méchant a fait son apparition et il est vraiment coriace. Luffy et une grande partie de son équipage ont été capturés et piégés à l’intérieur d’un téléphone.
+
+Vous devez les aider à sortir. Pour cela, il faut réussir les différents mini-jeux.
+
+Malheureusement je n’ai pas réussi à décrypter tous les mots de passe.
+
+Pour commencer, vous devez sauver Usopp. Pour cela, ouvrez l’application Insta et suivez les indications.
+
+Bonne chance`);
+
+  showChoices([
+    ["Je ne sais pas quoi faire", () => {
+      addMessage("Ouvrez l’application Instagram puis trouvez toutes les différences entre les deux images.");
+    }],
+    ["Je n’arrive pas à sauver Usopp", () => {
+      addMessage("Il y a 7 différences : 4 sur le drapeau, 1 sur le mât et 2 dans le ciel.");
+
+      showChoices([
+        ["Je ne trouve pas les différences", () => addMessage("Cherche mieux.")],
+        ["Je ne comprends pas l’indice", () => addMessage("Les chevaux se trouvent à l’avant de la mairie.")]
+      ]);
+    }]
+  ]);
+}
+
+function usoppDone() {
+  progress = 1;
+}
+
+/* ===== NAMI ===== */
+
+function afterUsopp() {
+  addMessage("Bravo, vous avez sauvé Usopp. Maintenant, il faut sauver Nami.");
+
+  showChoices([
+    ["Je n’arrive pas à mettre le code", () => {
+      addMessage("Tapez le code quand vous ouvrez l’application Waze.");
+    }],
+    ["Je n’arrive pas à sauver Nami", () => {
+      addMessage("Terminez le puzzle pour sauver Nami. Cliquez sur une pièce puis sur une case.");
+
+      showChoices([
+        ["Je n’arrive pas à faire le puzzle", () => {
+          addMessage("Luffy au milieu, Nami à gauche, Sanji et Zoro en haut, Chopper et Usopp à droite.");
+        }],
+        ["Je ne comprends pas l’indice", () => {
+          addMessage("Le mât d’un bateau est un grand pilier vertical... ça te rappelle quelque chose ?");
+        }]
+      ]);
+    }]
+  ]);
+}
+
+function namiDone() {
+  progress = 2;
+}
+
+/* ===== SANJI ===== */
+
+function afterNami() {
+  addMessage("Bravo, tu as maintenant sauvé Nami. Plus que 3 personnes à sauver.");
+
+  showChoices([
+    ["Je n’arrive pas à mettre le code", () => {
+      addMessage("Entre le code dans l’application Uber.");
+    }],
+    ["Je n’arrive pas à sauver Sanji", () => {
+      addMessage("Le jeu est un memory, retrouve les paires.");
+    }],
+    ["Je ne comprends pas l’indice", () => {
+      addMessage("Va au city.");
+    }]
+  ]);
+}
+
+function sanjiDone() {
+  progress = 3;
+}
+
+/* ===== ZORO ===== */
+
+function afterSanji() {
+  addMessage("Bravo, tu as sauvé Sanji. Maintenant allons sauver Zoro.");
+
+  showChoices([
+    ["Je n’arrive pas à mettre le code", () => {
+      addMessage("Entre le code dans l’application sport.");
+    }],
+    ["Je n’arrive pas à sauver Zoro", () => {
+      addMessage("Réussis le labyrinthe. Les points noirs sont des ennemis.");
+    }],
+    ["Je ne comprends pas l’indice", () => {
+      addMessage("Va à la salle JBC.");
+    }]
+  ]);
+}
+
+function zoroDone() {
+  progress = 4;
+}
+
+/* ===== LUFFY ===== */
+
+function afterZoro() {
+  addMessage("Zoro est désormais sauvé. Plus que Luffy à sauver.");
+
+  showChoices([
+    ["Je n’arrive pas à mettre le code", () => {
+      addMessage("Entre le code dans l’application mystère.");
+    }],
+    ["Je n’arrive pas à sauver Luffy", () => {
+      addMessage("Le jeu est un pendu. Les mots sont liés aux pirates.");
+    }],
+    ["Je ne comprends pas l’indice", () => {
+      addMessage("Le jeu est terminé, va chercher tes chocolats.");
+    }]
+  ]);
+}
+
+function luffyDone() {
+  progress = 5;
+}
+
+/* ===== FIN ===== */
+
+function endGame() {
+  addMessage("Bravo, vous avez sauvé tout l’équipage ! Vous pouvez aller chercher votre récompense.");
+}
+</script>
+
+</body>
+</html>
