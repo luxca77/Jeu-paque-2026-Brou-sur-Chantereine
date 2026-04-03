@@ -34,10 +34,8 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-
-  padding: 60px 20px 20px; 
-
+  gap: 20px;
+  padding: 80px 20px 20px; 
   align-content: start;
   justify-items: center;
   overflow-y: auto;
@@ -45,9 +43,24 @@ body {
 
 .app {
   width: 22vw;
-  max-width: 70px;
-  height: 22vw;
-  max-height: 70px;
+  max-width: 75px; /* Légèrement agrandi pour le confort */
+  height: auto;
+  min-height: 85px;
+  background: rgba(0, 0, 0, 0.747); /* Fond gris/noir semi-transparent */
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column; /* Aligne l'émoji et le texte verticalement */
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  padding: 5px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Petit contour pour le relief */
+  backdrop-filter: blur(4px); /* Floute un peu le fond derrière l'icône */
 }
 
 .locked { opacity:0.5; }
